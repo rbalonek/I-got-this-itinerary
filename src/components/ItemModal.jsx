@@ -6,8 +6,10 @@ import './ItemModal.css';
 export default function ItemModal({ tripId, item, itemType, onClose }) {
   const { addItineraryItem, updateItineraryItem } = useTrips();
   const [isLoading, setIsLoading] = useState(false);
+  const [isParsingImage, setIsParsingImage] = useState(false);
   const [scrapeError, setScrapeError] = useState(null);
-  const [showImageUpload, setShowImageUpload] = useState(false);
+  const [parseSuccess, setParseSuccess] = useState(null);
+  const [showImageUpload, setShowImageUpload] = useState(true); // Always show image upload option
 
   const [formData, setFormData] = useState({
     type: itemType || ITEM_TYPES.STAY,
@@ -66,43 +68,58 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
       try {
         const base64 = await fileToBase64(file);
         setFormData((prev) => ({ ...prev, image: base64 }));
-        // Try to parse the image with AI
-        await parseImageWithAI(base64);
+        setParseSuccess(null);
       } catch (error) {
         console.error('Error reading image:', error);
       }
     }
   };
 
-  const parseImageWithAI = async (imageData) => {
-    setIsLoading(true);
+  const handleExtractFromImage = async () => {
+    if (!formData.image) return;
+
+    setIsParsingImage(true);
+    setParseSuccess(null);
     setScrapeError(null);
+
     try {
       const response = await fetch('/.netlify/functions/parse-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageData, itemType: formData.type }),
+        body: JSON.stringify({ image: formData.image, itemType: formData.type }),
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setFormData((prev) => ({
-            ...prev,
-            title: data.title || prev.title,
-            location: data.location || prev.location,
-            startDate: data.startDate || prev.startDate,
-            startTime: data.startTime || prev.startTime,
-            endDate: data.endDate || prev.endDate,
-            endTime: data.endTime || prev.endTime,
-            price: data.price || prev.price,
-          }));
+          const fieldsFound = [];
+          const updates = {};
+
+          if (data.title) { updates.title = data.title; fieldsFound.push('title'); }
+          if (data.location) { updates.location = data.location; fieldsFound.push('location'); }
+          if (data.startDate) { updates.startDate = data.startDate; fieldsFound.push('start date'); }
+          if (data.startTime) { updates.startTime = data.startTime; fieldsFound.push('start time'); }
+          if (data.endDate) { updates.endDate = data.endDate; fieldsFound.push('end date'); }
+          if (data.endTime) { updates.endTime = data.endTime; fieldsFound.push('end time'); }
+          if (data.price) { updates.price = data.price; fieldsFound.push('price'); }
+
+          if (fieldsFound.length > 0) {
+            setFormData((prev) => ({ ...prev, ...updates }));
+            setParseSuccess(`Extracted: ${fieldsFound.join(', ')}`);
+          } else {
+            setParseSuccess('Could not extract any fields. Please fill in manually.');
+          }
+        } else {
+          setParseSuccess('Could not extract information. Please fill in manually.');
         }
+      } else {
+        setParseSuccess('Failed to process image. Please fill in manually.');
       }
     } catch (error) {
       console.error('Error parsing image:', error);
+      setParseSuccess('Error processing image. Please fill in manually.');
     } finally {
-      setIsLoading(false);
+      setIsParsingImage(false);
     }
   };
 
@@ -258,18 +275,21 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
             )}
           </div>
 
-          {/* Image Upload Fallback */}
-          {(showImageUpload || formData.image) && (
-            <div className="form-group">
-              <label>Upload Screenshot</label>
-              <div className="image-upload-section">
-                {formData.image ? (
+          {/* Image Upload Section */}
+          <div className="form-group">
+            <label>Upload Screenshot</label>
+            <div className="image-upload-section">
+              {formData.image ? (
+                <>
                   <div className="image-preview-small">
                     <img src={formData.image} alt="Uploaded" />
                     <button
                       type="button"
                       className="remove-image-btn"
-                      onClick={() => setFormData((prev) => ({ ...prev, image: null }))}
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, image: null }));
+                        setParseSuccess(null);
+                      }}
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="18" y1="6" x2="6" y2="18" />
@@ -277,28 +297,64 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
                       </svg>
                     </button>
                   </div>
-                ) : (
-                  <label className="upload-btn">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      hidden
-                    />
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="17,8 12,3 7,8" />
-                      <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg>
-                    Upload Screenshot
-                  </label>
-                )}
-              </div>
-              <p className="helper-text">
-                If the URL couldn't be scraped, upload a screenshot and we'll try to extract the info.
-              </p>
+                  <button
+                    type="button"
+                    className="btn-extract"
+                    onClick={handleExtractFromImage}
+                    disabled={isParsingImage}
+                  >
+                    {isParsingImage ? (
+                      <>
+                        <span className="loading-spinner"></span>
+                        Extracting...
+                      </>
+                    ) : (
+                      <>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14,2 14,8 20,8" />
+                          <line x1="16" y1="13" x2="8" y2="13" />
+                          <line x1="16" y1="17" x2="8" y2="17" />
+                          <polyline points="10,9 9,9 8,9" />
+                        </svg>
+                        Extract Info
+                      </>
+                    )}
+                  </button>
+                </>
+              ) : (
+                <label className="upload-btn">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    hidden
+                  />
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17,8 12,3 7,8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  Upload Screenshot
+                </label>
+              )}
             </div>
-          )}
+            {parseSuccess && (
+              <div className={`parse-result ${parseSuccess.includes('Extracted') ? 'success' : 'info'}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  {parseSuccess.includes('Extracted') ? (
+                    <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22,4 12,14.01 9,11.01" /></>
+                  ) : (
+                    <><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></>
+                  )}
+                </svg>
+                {parseSuccess}
+              </div>
+            )}
+            <p className="helper-text">
+              Upload a screenshot of your booking and click "Extract Info" to auto-fill the details.
+            </p>
+          </div>
 
           <div className="divider">
             <span>or fill in manually</span>
