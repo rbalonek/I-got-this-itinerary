@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "I Got This",
+  "name": "I Got This - Travel Itinerary Planner",
+  "description": "Your smart travel itinerary planner. Create trips, organize stays, activities, and travel.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -20,6 +21,8 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#667eea",
+  "background_color": "#f5f7fa",
+  "orientation": "portrait-primary",
+  "categories": ["travel", "lifestyle", "productivity"]
 }
