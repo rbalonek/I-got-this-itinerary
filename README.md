@@ -1,70 +1,164 @@
-# Getting Started with Create React App
+# I Got This - Travel Itinerary Planner
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern, visually appealing travel itinerary web application built with React and designed for deployment on Netlify.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+### Trip Management
+- Create and manage multiple trips
+- Add cover images and trip details
+- Set trip dates and descriptions
 
-### `npm start`
+### Smart Itinerary Building
+- Add **Stays** (hotels, Airbnb, etc.)
+- Add **Travel** (trains, flights, buses, cars, ferries)
+- Add **Activities** (tours, museums, events)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### AI-Powered Smart Scraping
+- Paste URLs from booking sites (Airbnb, train tickets, etc.)
+- Automatically extracts dates, times, locations, and prices using AI (ChatGPT or Claude)
+- Image upload with OCR fallback when URL scraping fails
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### Locations & Wishlist
+- Add restaurants, sights, museums, and other points of interest
+- Categorize locations with visual icons
+- Interactive map powered by Leaflet.js
+- Geocoding with OpenStreetMap
 
-### `npm test`
+### Trip Map View
+- Visualize your entire itinerary on a map
+- See travel routes with connecting lines
+- Filter by trip
+- Custom markers with icons/images
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Modern Design
+- Soft, relaxing color palette
+- Mobile-responsive layout
+- Smooth animations and transitions
+- Easy navigation with bottom tabs on mobile
 
-### `npm run build`
+## Tech Stack
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- **Frontend**: React 18 with React Router
+- **Maps**: Leaflet.js with React-Leaflet
+- **Styling**: Custom CSS with CSS Variables
+- **State Management**: React Context API
+- **Storage**: LocalStorage for data persistence
+- **Backend**: Netlify Functions (serverless)
+- **AI Integration**: Anthropic Claude API / OpenAI API
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Getting Started
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Prerequisites
 
-### `npm run eject`
+- Node.js 18+
+- npm or yarn
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Installation
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd i-got-this-itinerary
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+# Install dependencies
+npm install
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+# Start the development server
+npm start
+```
 
-## Learn More
+### Environment Variables
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+For the AI-powered scraping features, set these environment variables in Netlify:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```
+ANTHROPIC_API_KEY=your-anthropic-api-key
+# OR
+OPENAI_API_KEY=your-openai-api-key
+```
 
-### Code Splitting
+## Deployment to Netlify
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### Option 1: Deploy via Netlify CLI
 
-### Analyzing the Bundle Size
+```bash
+# Install Netlify CLI
+npm install -g netlify-cli
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+# Build the project
+npm run build
 
-### Making a Progressive Web App
+# Deploy
+netlify deploy --prod
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### Option 2: Connect to Git
 
-### Advanced Configuration
+1. Push your code to GitHub/GitLab/Bitbucket
+2. Connect your repository in Netlify dashboard
+3. Set build command: `npm run build`
+4. Set publish directory: `build`
+5. Add environment variables for AI APIs
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Project Structure
 
-### Deployment
+```
+src/
+├── components/         # Reusable components
+│   └── ItemModal.jsx   # Add/edit itinerary items
+├── context/
+│   └── TripContext.js  # Global state management
+├── layouts/
+│   └── MainLayout.jsx  # App layout with navigation
+├── screens/
+│   ├── Trips/          # Trip management screens
+│   ├── Itinerary/      # Calendar view of events
+│   ├── Locations/      # Wishlist and locations map
+│   └── Map/            # Trip map visualization
+├── utils/
+│   └── helpers.js      # Utility functions
+├── App.js
+└── index.js
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+netlify/
+└── functions/
+    ├── scrape-url.js   # URL scraping with AI
+    └── parse-image.js  # Image OCR with AI
 
-### `npm run build` fails to minify
+public/
+├── index.html
+├── manifest.json
+└── _redirects
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Usage Guide
+
+### Creating a Trip
+1. Click "New Trip" on the Trips tab
+2. Enter trip name, dates, and optional cover image
+3. Click "Create Trip"
+
+### Adding Itinerary Items
+1. Open a trip by clicking on it
+2. Click "Add Stay", "Add Travel", or "Add Activity"
+3. Either paste a URL and click "Fetch" to auto-fill details
+4. Or manually enter the information
+5. If scraping fails, upload a screenshot for OCR
+
+### Managing Locations
+1. Go to the Locations tab
+2. Click "Add Location"
+3. Select category and enter details
+4. Search for address to add map coordinates
+5. View all locations on the interactive map
+
+### Viewing Trip Map
+1. Go to the Map tab
+2. Select a specific trip or view all
+3. Click on markers for details
+4. See the travel route connecting events
+
+## License
+
+MIT License
