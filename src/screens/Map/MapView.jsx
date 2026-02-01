@@ -101,7 +101,7 @@ export default function MapView() {
     return filteredItems.map((item) => [item.coordinates.lat, item.coordinates.lng]);
   }, [filteredItems]);
 
-  // Create polyline for travel route
+  // Create polyline for overall trip route
   const routePositions = useMemo(() => {
     if (selectedTripId === 'all') return [];
     return filteredItems.map((item) => [item.coordinates.lat, item.coordinates.lng]);
@@ -191,13 +191,13 @@ export default function MapView() {
             {positions.length > 0 && <MapBounds positions={positions} />}
             <MapPanTo selectedItem={selectedItem} />
 
-            {/* Route line */}
+            {/* Overall trip route line */}
             {routePositions.length > 1 && (
               <Polyline
                 positions={routePositions}
                 color="#667eea"
                 weight={3}
-                opacity={0.7}
+                opacity={0.5}
                 dashArray="10, 10"
               />
             )}

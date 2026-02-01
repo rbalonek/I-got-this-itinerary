@@ -28,7 +28,16 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
     image: null,
     faviconUrl: null,
     coordinates: null,
+    // Travel-specific fields for route display
+    originLocation: '',
+    originCoordinates: null,
+    destinationLocation: '',
+    destinationCoordinates: null,
   });
+  const [isGeocodingOrigin, setIsGeocodingOrigin] = useState(false);
+  const [isGeocodingDestination, setIsGeocodingDestination] = useState(false);
+  const [originGeocodeStatus, setOriginGeocodeStatus] = useState(null);
+  const [destinationGeocodeStatus, setDestinationGeocodeStatus] = useState(null);
 
   useEffect(() => {
     if (item) {
@@ -50,10 +59,20 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
         image: item.image || null,
         faviconUrl: item.faviconUrl || null,
         coordinates: item.coordinates || null,
+        originLocation: item.originLocation || '',
+        originCoordinates: item.originCoordinates || null,
+        destinationLocation: item.destinationLocation || '',
+        destinationCoordinates: item.destinationCoordinates || null,
       });
       // Show success status if item already has coordinates
       if (item.coordinates) {
         setGeocodeStatus('success');
+      }
+      if (item.originCoordinates) {
+        setOriginGeocodeStatus('success');
+      }
+      if (item.destinationCoordinates) {
+        setDestinationGeocodeStatus('success');
       }
     }
   }, [item, itemType]);
@@ -70,6 +89,12 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
     // Reset geocode status when location changes
     if (name === 'location') {
       setGeocodeStatus(null);
+    }
+    if (name === 'originLocation') {
+      setOriginGeocodeStatus(null);
+    }
+    if (name === 'destinationLocation') {
+      setDestinationGeocodeStatus(null);
     }
   };
 
@@ -98,6 +123,61 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
       setGeocodeStatus('not_found');
     } finally {
       setIsGeocoding(false);
+    }
+  };
+
+  const handleGeocodeOrigin = async () => {
+    const location = formData.originLocation;
+    if (!location || location.trim().length < 3) return;
+
+    setIsGeocodingOrigin(true);
+    setOriginGeocodeStatus(null);
+
+    try {
+      const result = await geocodeLocation(location);
+      if (result) {
+        setFormData((prev) => ({
+          ...prev,
+          originCoordinates: { lat: result.lat, lng: result.lng },
+          // Set main coordinates to origin for map marker
+          coordinates: { lat: result.lat, lng: result.lng },
+        }));
+        setOriginGeocodeStatus('success');
+        setGeocodeStatus('success');
+      } else {
+        setOriginGeocodeStatus('not_found');
+      }
+    } catch (error) {
+      console.error('Geocoding origin failed:', error);
+      setOriginGeocodeStatus('not_found');
+    } finally {
+      setIsGeocodingOrigin(false);
+    }
+  };
+
+  const handleGeocodeDestination = async () => {
+    const location = formData.destinationLocation;
+    if (!location || location.trim().length < 3) return;
+
+    setIsGeocodingDestination(true);
+    setDestinationGeocodeStatus(null);
+
+    try {
+      const result = await geocodeLocation(location);
+      if (result) {
+        setFormData((prev) => ({
+          ...prev,
+          destinationCoordinates: { lat: result.lat, lng: result.lng },
+        }));
+        setDestinationGeocodeStatus('success');
+      } else {
+        setDestinationGeocodeStatus('not_found');
+      }
+    } catch (error) {
+      console.error('Geocoding destination failed:', error);
+      setDestinationGeocodeStatus('not_found');
+    } finally {
+      setIsGeocodingDestination(false);
     }
   };
 
@@ -234,7 +314,9 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
       type: formData.type,
       travelType: formData.type === ITEM_TYPES.TRAVEL ? formData.travelType : null,
       title: formData.title,
-      location: formData.location,
+      location: formData.type === ITEM_TYPES.TRAVEL
+        ? `${formData.originLocation} → ${formData.destinationLocation}`
+        : formData.location,
       startDate: startDateTime ? startDateTime.toISOString() : null,
       endDate: endDateTime ? endDateTime.toISOString() : null,
       price: formData.price,
@@ -243,6 +325,11 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
       image: formData.image,
       faviconUrl: formData.faviconUrl,
       coordinates: formData.coordinates,
+      // Travel route fields
+      originLocation: formData.type === ITEM_TYPES.TRAVEL ? formData.originLocation : null,
+      originCoordinates: formData.type === ITEM_TYPES.TRAVEL ? formData.originCoordinates : null,
+      destinationLocation: formData.type === ITEM_TYPES.TRAVEL ? formData.destinationLocation : null,
+      destinationCoordinates: formData.type === ITEM_TYPES.TRAVEL ? formData.destinationCoordinates : null,
     };
 
     if (item) {
@@ -452,48 +539,129 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="location">Location</label>
-            <div className="location-input-group">
-              <input
-                type="text"
-                id="location"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                onBlur={() => handleGeocodeLocation()}
-                placeholder="e.g., Rome, Italy"
-              />
-              {isGeocoding && (
-                <span className="geocode-indicator loading">
-                  <span className="loading-spinner small"></span>
-                </span>
+          {/* For travel items, show From/To fields; for others, show single Location */}
+          {formData.type === ITEM_TYPES.TRAVEL ? (
+            <>
+              <div className="form-group">
+                <label htmlFor="originLocation">From</label>
+                <div className="location-input-group">
+                  <input
+                    type="text"
+                    id="originLocation"
+                    name="originLocation"
+                    value={formData.originLocation}
+                    onChange={handleChange}
+                    onBlur={handleGeocodeOrigin}
+                    placeholder="e.g., Rome, Italy"
+                  />
+                  {isGeocodingOrigin && (
+                    <span className="geocode-indicator loading">
+                      <span className="loading-spinner small"></span>
+                    </span>
+                  )}
+                  {!isGeocodingOrigin && originGeocodeStatus === 'success' && (
+                    <span className="geocode-indicator success" title="Location found on map">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22,4 12,14.01 9,11.01" />
+                      </svg>
+                    </span>
+                  )}
+                  {!isGeocodingOrigin && originGeocodeStatus === 'not_found' && (
+                    <span className="geocode-indicator warning" title="Location not found">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="form-group">
+                <label htmlFor="destinationLocation">To</label>
+                <div className="location-input-group">
+                  <input
+                    type="text"
+                    id="destinationLocation"
+                    name="destinationLocation"
+                    value={formData.destinationLocation}
+                    onChange={handleChange}
+                    onBlur={handleGeocodeDestination}
+                    placeholder="e.g., Venice, Italy"
+                  />
+                  {isGeocodingDestination && (
+                    <span className="geocode-indicator loading">
+                      <span className="loading-spinner small"></span>
+                    </span>
+                  )}
+                  {!isGeocodingDestination && destinationGeocodeStatus === 'success' && (
+                    <span className="geocode-indicator success" title="Location found on map">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22,4 12,14.01 9,11.01" />
+                      </svg>
+                    </span>
+                  )}
+                  {!isGeocodingDestination && destinationGeocodeStatus === 'not_found' && (
+                    <span className="geocode-indicator warning" title="Location not found">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                    </span>
+                  )}
+                </div>
+                {originGeocodeStatus === 'success' && destinationGeocodeStatus === 'success' && (
+                  <span className="helper-text success">Route will appear on map</span>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="form-group">
+              <label htmlFor="location">Location</label>
+              <div className="location-input-group">
+                <input
+                  type="text"
+                  id="location"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  onBlur={() => handleGeocodeLocation()}
+                  placeholder="e.g., Rome, Italy"
+                />
+                {isGeocoding && (
+                  <span className="geocode-indicator loading">
+                    <span className="loading-spinner small"></span>
+                  </span>
+                )}
+                {!isGeocoding && geocodeStatus === 'success' && (
+                  <span className="geocode-indicator success" title="Location found on map">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                      <polyline points="22,4 12,14.01 9,11.01" />
+                    </svg>
+                  </span>
+                )}
+                {!isGeocoding && geocodeStatus === 'not_found' && (
+                  <span className="geocode-indicator warning" title="Location not found - won't appear on map">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                  </span>
+                )}
+              </div>
+              {geocodeStatus === 'success' && formData.coordinates && (
+                <span className="helper-text success">Will appear on map</span>
               )}
-              {!isGeocoding && geocodeStatus === 'success' && (
-                <span className="geocode-indicator success" title="Location found on map">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                    <polyline points="22,4 12,14.01 9,11.01" />
-                  </svg>
-                </span>
-              )}
-              {!isGeocoding && geocodeStatus === 'not_found' && (
-                <span className="geocode-indicator warning" title="Location not found - won't appear on map">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                </span>
+              {geocodeStatus === 'not_found' && (
+                <span className="helper-text warning">Location not found - try a more specific address</span>
               )}
             </div>
-            {geocodeStatus === 'success' && formData.coordinates && (
-              <span className="helper-text success">Will appear on map</span>
-            )}
-            {geocodeStatus === 'not_found' && (
-              <span className="helper-text warning">Location not found - try a more specific address</span>
-            )}
-          </div>
+          )}
 
           <div className="form-row">
             <div className="form-group">

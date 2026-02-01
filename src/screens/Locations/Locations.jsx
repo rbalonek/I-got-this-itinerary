@@ -256,6 +256,7 @@ export default function Locations() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <MapUpdater center={mapCenter} />
+            {/* Location markers */}
             {mappableLocations.map((location) => (
               <Marker
                 key={location.id}
