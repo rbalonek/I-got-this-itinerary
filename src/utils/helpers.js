@@ -66,6 +66,7 @@ export const getItemIcon = (type, subtype) => {
 
 export const getCategoryIcon = (category) => {
   const icons = {
+    lodging: '🏨',
     restaurant: '🍽️',
     sight: '🏛️',
     museum: '🖼️',
@@ -79,6 +80,7 @@ export const getCategoryIcon = (category) => {
 
 export const getCategoryColor = (category) => {
   const colors = {
+    lodging: '#667eea',
     restaurant: '#FF6B6B',
     sight: '#4ECDC4',
     museum: '#9B59B6',
@@ -139,4 +141,50 @@ export const fileToBase64 = (file) => {
 
 export const generateId = () => {
   return Math.random().toString(36).substring(2, 9);
+};
+
+// Geocode a location string to coordinates using OpenStreetMap Nominatim
+export const geocodeLocation = async (locationString) => {
+  if (!locationString || locationString.trim().length < 3) {
+    return null;
+  }
+
+  try {
+    const encodedLocation = encodeURIComponent(locationString.trim());
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodedLocation}&format=json&limit=1`,
+      {
+        headers: {
+          'User-Agent': 'I-Got-This-Itinerary/1.0',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Geocoding request failed:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
+        displayName: data[0].display_name,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
+};
+
+// Debounce helper for geocoding
+export const debounce = (func, wait) => {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
 };

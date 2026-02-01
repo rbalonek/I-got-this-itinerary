@@ -39,7 +39,7 @@ const createItemIcon = (item) => {
   });
 };
 
-// Component to fit map bounds
+// Component to fit map bounds on initial load
 function MapBounds({ positions }) {
   const map = useMap();
 
@@ -49,6 +49,23 @@ function MapBounds({ positions }) {
       map.fitBounds(bounds, { padding: [50, 50] });
     }
   }, [positions, map]);
+
+  return null;
+}
+
+// Component to pan to selected item
+function MapPanTo({ selectedItem }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (selectedItem && selectedItem.coordinates) {
+      map.flyTo(
+        [selectedItem.coordinates.lat, selectedItem.coordinates.lng],
+        14,
+        { duration: 0.5 }
+      );
+    }
+  }, [selectedItem, map]);
 
   return null;
 }
@@ -124,7 +141,7 @@ export default function MapView() {
           {filteredItems.length === 0 ? (
             <div className="empty-events">
               <p>No events with locations yet.</p>
-              <p className="hint">Add coordinates when creating itinerary items to see them on the map.</p>
+              <p className="hint">Add stays, activities, or travel with a location to see them on the map.</p>
             </div>
           ) : (
             <div className="events-list">
@@ -172,6 +189,7 @@ export default function MapView() {
             />
 
             {positions.length > 0 && <MapBounds positions={positions} />}
+            <MapPanTo selectedItem={selectedItem} />
 
             {/* Route line */}
             {routePositions.length > 1 && (

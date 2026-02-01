@@ -3,23 +3,17 @@
   publish = "build"
   functions = "netlify/functions"
 
+[dev]
+  framework = "#auto"
+  targetPort = 3000
+  port = 8888
+  autoLaunch = false
+  functionsPort = 9999
+
 [build.environment]
   NODE_VERSION = "18"
 
-# Redirect all routes to index.html for SPA routing
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  conditions = {Role = ["admin", "user"]}
-
-# API redirects for Netlify Functions
-[[redirects]]
-  from = "/.netlify/functions/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
-# SPA fallback (after API routes)
+# SPA fallback - redirect all routes to index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"

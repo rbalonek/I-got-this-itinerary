@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTrips, ITEM_TYPES, TRAVEL_TYPES } from '../context/TripContext';
-import { fileToBase64, getFaviconUrl, isValidUrl } from '../utils/helpers';
+import { fileToBase64, getFaviconUrl, isValidUrl, geocodeLocation } from '../utils/helpers';
 import './ItemModal.css';
 
 export default function ItemModal({ tripId, item, itemType, onClose }) {
@@ -10,6 +10,8 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
   const [scrapeError, setScrapeError] = useState(null);
   const [parseSuccess, setParseSuccess] = useState(null);
   const [showImageUpload, setShowImageUpload] = useState(true); // Always show image upload option
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodeStatus, setGeocodeStatus] = useState(null); // 'success', 'not_found', or null
 
   const [formData, setFormData] = useState({
     type: itemType || ITEM_TYPES.STAY,
@@ -49,6 +51,10 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
         faviconUrl: item.faviconUrl || null,
         coordinates: item.coordinates || null,
       });
+      // Show success status if item already has coordinates
+      if (item.coordinates) {
+        setGeocodeStatus('success');
+      }
     }
   }, [item, itemType]);
 
@@ -59,6 +65,39 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
     // Update favicon when URL changes
     if (name === 'url' && isValidUrl(value)) {
       setFormData((prev) => ({ ...prev, faviconUrl: getFaviconUrl(value) }));
+    }
+
+    // Reset geocode status when location changes
+    if (name === 'location') {
+      setGeocodeStatus(null);
+    }
+  };
+
+  const handleGeocodeLocation = async (locationValue) => {
+    const location = locationValue || formData.location;
+    if (!location || location.trim().length < 3) {
+      return;
+    }
+
+    setIsGeocoding(true);
+    setGeocodeStatus(null);
+
+    try {
+      const result = await geocodeLocation(location);
+      if (result) {
+        setFormData((prev) => ({
+          ...prev,
+          coordinates: { lat: result.lat, lng: result.lng },
+        }));
+        setGeocodeStatus('success');
+      } else {
+        setGeocodeStatus('not_found');
+      }
+    } catch (error) {
+      console.error('Geocoding failed:', error);
+      setGeocodeStatus('not_found');
+    } finally {
+      setIsGeocoding(false);
     }
   };
 
@@ -102,6 +141,11 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
           if (data.endDate) { updates.endDate = data.endDate; fieldsFound.push('end date'); }
           if (data.endTime) { updates.endTime = data.endTime; fieldsFound.push('end time'); }
           if (data.price) { updates.price = data.price; fieldsFound.push('price'); }
+          if (data.coordinates) {
+            updates.coordinates = data.coordinates;
+            fieldsFound.push('map location');
+            setGeocodeStatus('success');
+          }
 
           if (fieldsFound.length > 0) {
             setFormData((prev) => ({ ...prev, ...updates }));
@@ -151,8 +195,12 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
           endDate: data.endDate || prev.endDate,
           endTime: data.endTime || prev.endTime,
           price: data.price || prev.price,
+          coordinates: data.coordinates || prev.coordinates,
           faviconUrl: getFaviconUrl(formData.url),
         }));
+        if (data.coordinates) {
+          setGeocodeStatus('success');
+        }
       } else {
         setScrapeError(data.error || 'Could not extract information from URL');
         setShowImageUpload(true);
@@ -406,14 +454,45 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
 
           <div className="form-group">
             <label htmlFor="location">Location</label>
-            <input
-              type="text"
-              id="location"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              placeholder="e.g., Rome, Italy"
-            />
+            <div className="location-input-group">
+              <input
+                type="text"
+                id="location"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                onBlur={() => handleGeocodeLocation()}
+                placeholder="e.g., Rome, Italy"
+              />
+              {isGeocoding && (
+                <span className="geocode-indicator loading">
+                  <span className="loading-spinner small"></span>
+                </span>
+              )}
+              {!isGeocoding && geocodeStatus === 'success' && (
+                <span className="geocode-indicator success" title="Location found on map">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22,4 12,14.01 9,11.01" />
+                  </svg>
+                </span>
+              )}
+              {!isGeocoding && geocodeStatus === 'not_found' && (
+                <span className="geocode-indicator warning" title="Location not found - won't appear on map">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                </span>
+              )}
+            </div>
+            {geocodeStatus === 'success' && formData.coordinates && (
+              <span className="helper-text success">Will appear on map</span>
+            )}
+            {geocodeStatus === 'not_found' && (
+              <span className="helper-text warning">Location not found - try a more specific address</span>
+            )}
           </div>
 
           <div className="form-row">

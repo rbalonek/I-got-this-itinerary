@@ -311,4 +311,52 @@
   color: white;
 }
 
+/* Location Input with Geocode Indicator */
+.location-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.location-input-group input {
+  flex: 1;
+  padding-right: 2.5rem;
+}
+
+.geocode-indicator {
+  position: absolute;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.geocode-indicator svg {
+  width: 18px;
+  height: 18px;
+}
+
+.geocode-indicator.success svg {
+  stroke: #10b981;
+}
+
+.geocode-indicator.warning svg {
+  stroke: #f59e0b;
+}
+
+.geocode-indicator.loading .loading-spinner.small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #667eea;
+}
+
+.helper-text.success {
+  color: #10b981;
+}
+
+.helper-text.warning {
+  color: #f59e0b;
+}
+
 /* Form styles inherited from TripModal.css */

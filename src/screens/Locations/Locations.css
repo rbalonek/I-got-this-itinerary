@@ -153,6 +153,25 @@
   overflow: hidden;
 }
 
+.trip-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  background: #667eea;
+  color: white;
+  border-radius: 4px;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.location-card.is-trip-item {
+  background: linear-gradient(135deg, #fefefe 0%, #f8faff 100%);
+}
+
+.popup-trip {
+  font-weight: 500;
+}
+
 .location-actions {
   display: flex;
   gap: 0.35rem;

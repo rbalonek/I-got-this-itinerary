@@ -67,6 +67,14 @@ export async function handler(event) {
       };
     }
 
+    // Geocode the location if found
+    if (extractedData.location) {
+      const coordinates = await geocodeLocation(extractedData.location);
+      if (coordinates) {
+        extractedData.coordinates = coordinates;
+      }
+    }
+
     return {
       statusCode: 200,
       headers: {
@@ -208,4 +216,39 @@ function parseAIResponse(text) {
     console.error('Failed to parse AI response:', e);
   }
   return {};
+}
+
+// Geocode a location string to coordinates using OpenStreetMap Nominatim
+async function geocodeLocation(locationString) {
+  if (!locationString || locationString.trim().length < 3) {
+    return null;
+  }
+
+  try {
+    const encodedLocation = encodeURIComponent(locationString.trim());
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodedLocation}&format=json&limit=1`,
+      {
+        headers: {
+          'User-Agent': 'I-Got-This-Itinerary/1.0',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
 }

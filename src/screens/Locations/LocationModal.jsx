@@ -6,6 +6,7 @@ import './LocationModal.css';
 export default function LocationModal({ location, onClose }) {
   const { addLocation, updateLocation } = useTrips();
   const [isSearching, setIsSearching] = useState(false);
+  const [geocodeStatus, setGeocodeStatus] = useState(null); // 'success', 'not_found', or null
 
   const [formData, setFormData] = useState({
     name: '',
@@ -26,12 +27,22 @@ export default function LocationModal({ location, onClose }) {
         url: location.url || '',
         coordinates: location.coordinates || null,
       });
+      // Show success status if location already has coordinates
+      if (location.coordinates) {
+        setGeocodeStatus('success');
+      }
     }
   }, [location]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Reset geocode status when address changes
+    if (name === 'address') {
+      setGeocodeStatus(null);
+      setFormData((prev) => ({ ...prev, coordinates: null }));
+    }
   };
 
   const handleCategorySelect = (category) => {
@@ -39,13 +50,19 @@ export default function LocationModal({ location, onClose }) {
   };
 
   const handleSearchLocation = async () => {
-    if (!formData.address.trim()) return;
+    if (!formData.address.trim() || formData.address.trim().length < 3) return;
 
     setIsSearching(true);
+    setGeocodeStatus(null);
     try {
       // Use Nominatim (OpenStreetMap) for geocoding
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address)}`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address)}`,
+        {
+          headers: {
+            'User-Agent': 'I-Got-This-Itinerary/1.0',
+          },
+        }
       );
       const data = await response.json();
 
@@ -53,15 +70,18 @@ export default function LocationModal({ location, onClose }) {
         const result = data[0];
         setFormData((prev) => ({
           ...prev,
-          address: result.display_name,
           coordinates: {
             lat: parseFloat(result.lat),
             lng: parseFloat(result.lon),
           },
         }));
+        setGeocodeStatus('success');
+      } else {
+        setGeocodeStatus('not_found');
       }
     } catch (error) {
       console.error('Geocoding error:', error);
+      setGeocodeStatus('not_found');
     } finally {
       setIsSearching(false);
     }
@@ -132,32 +152,37 @@ export default function LocationModal({ location, onClose }) {
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                placeholder="Search for an address..."
+                onBlur={handleSearchLocation}
+                placeholder="Enter an address to show on map..."
               />
-              <button
-                type="button"
-                className="search-btn"
-                onClick={handleSearchLocation}
-                disabled={isSearching}
-              >
-                {isSearching ? (
+              {isSearching && (
+                <span className="geocode-indicator loading">
                   <span className="loading-spinner"></span>
-                ) : (
+                </span>
+              )}
+              {!isSearching && geocodeStatus === 'success' && (
+                <span className="geocode-indicator success">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22,4 12,14.01 9,11.01" />
                   </svg>
-                )}
-              </button>
+                </span>
+              )}
+              {!isSearching && geocodeStatus === 'not_found' && (
+                <span className="geocode-indicator warning">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                </span>
+              )}
             </div>
-            {formData.coordinates && (
-              <span className="coordinates-badge">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-                Location found
-              </span>
+            {geocodeStatus === 'success' && formData.coordinates && (
+              <span className="helper-text success">Will appear on map</span>
+            )}
+            {geocodeStatus === 'not_found' && (
+              <span className="helper-text warning">Location not found - try a more specific address</span>
             )}
           </div>
 

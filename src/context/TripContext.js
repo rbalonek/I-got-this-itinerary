@@ -24,6 +24,7 @@ export const TRAVEL_TYPES = {
 
 // Location categories for wishlists
 export const LOCATION_CATEGORIES = {
+  LODGING: 'lodging',
   RESTAURANT: 'restaurant',
   SIGHT: 'sight',
   MUSEUM: 'museum',

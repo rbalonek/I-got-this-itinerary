@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { useTrips, LOCATION_CATEGORIES } from '../../context/TripContext';
-import { getCategoryIcon, getCategoryColor } from '../../utils/helpers';
+import { useTrips, LOCATION_CATEGORIES, ITEM_TYPES } from '../../context/TripContext';
+import { getCategoryIcon, getCategoryColor, getItemIcon, getItemTypeColor } from '../../utils/helpers';
 import LocationModal from './LocationModal';
 import 'leaflet/dist/leaflet.css';
 import './Locations.css';
@@ -16,13 +16,31 @@ L.Icon.Default.mergeOptions({
 });
 
 // Custom marker icon creator
-const createCustomIcon = (category) => {
-  const color = getCategoryColor(category);
+const createCustomIcon = (location) => {
+  // For trip items, use item type colors and icons
+  if (location.isTrip) {
+    const color = getItemTypeColor(location.itemType);
+    const icon = getItemIcon(location.itemType, location.travelType);
+    return L.divIcon({
+      className: 'custom-marker',
+      html: `
+        <div class="marker-pin" style="background-color: ${color}">
+          <span class="marker-icon">${icon}</span>
+        </div>
+      `,
+      iconSize: [30, 42],
+      iconAnchor: [15, 42],
+      popupAnchor: [0, -35],
+    });
+  }
+  // For wishlist locations, use category colors and icons
+  const color = getCategoryColor(location.category);
+  const icon = getCategoryIcon(location.category);
   return L.divIcon({
     className: 'custom-marker',
     html: `
       <div class="marker-pin" style="background-color: ${color}">
-        <span class="marker-icon">${getCategoryIcon(category)}</span>
+        <span class="marker-icon">${icon}</span>
       </div>
     `,
     iconSize: [30, 42],
@@ -35,23 +53,50 @@ const createCustomIcon = (category) => {
 function MapUpdater({ center }) {
   const map = useMap();
   useEffect(() => {
-    if (center) {
-      map.setView(center, 13);
+    if (center && center[0] && center[1]) {
+      map.flyTo(center, 15, { duration: 0.5 });
     }
-  }, [center, map]);
+  }, [center[0], center[1], map]);
   return null;
 }
 
 export default function Locations() {
-  const { locations, deleteLocation } = useTrips();
+  const { locations, deleteLocation, trips } = useTrips();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [mapCenter, setMapCenter] = useState([41.9028, 12.4964]); // Default to Rome
 
+  // Convert all trip items (stays, travel, activities) to location-like objects
+  const tripItems = trips.flatMap((trip) =>
+    trip.items.map((item) => ({
+      ...item,
+      name: item.title,
+      address: item.location,
+      itemType: item.type, // 'stay', 'travel', or 'activity'
+      isTrip: true,
+      tripId: trip.id,
+      tripName: trip.name,
+    }))
+  );
+
+  // Get counts for each type
+  const tripStays = tripItems.filter((item) => item.itemType === ITEM_TYPES.STAY);
+  const tripTravel = tripItems.filter((item) => item.itemType === ITEM_TYPES.TRAVEL);
+  const tripActivities = tripItems.filter((item) => item.itemType === ITEM_TYPES.ACTIVITY);
+
+  // Combine locations and trip items
+  const allLocations = [...locations, ...tripItems];
+
   const filteredLocations = selectedCategory === 'all'
-    ? locations
-    : locations.filter((loc) => loc.category === selectedCategory);
+    ? allLocations
+    : selectedCategory === 'stay'
+      ? tripStays
+      : selectedCategory === 'travel'
+        ? tripTravel
+        : selectedCategory === 'activity'
+          ? tripActivities
+          : locations.filter((loc) => loc.category === selectedCategory);
 
   // Get locations with coordinates for map
   const mappableLocations = filteredLocations.filter(
@@ -102,6 +147,28 @@ export default function Locations() {
             >
               All
             </button>
+            {/* Trip item type categories */}
+            <button
+              className={`category-btn ${selectedCategory === 'stay' ? 'active' : ''}`}
+              onClick={() => setSelectedCategory('stay')}
+              style={{ '--category-color': getItemTypeColor('stay') }}
+            >
+              {getItemIcon('stay')} Stays ({tripStays.length})
+            </button>
+            <button
+              className={`category-btn ${selectedCategory === 'travel' ? 'active' : ''}`}
+              onClick={() => setSelectedCategory('travel')}
+              style={{ '--category-color': getItemTypeColor('travel') }}
+            >
+              {getItemIcon('travel', 'other')} Travel ({tripTravel.length})
+            </button>
+            <button
+              className={`category-btn ${selectedCategory === 'activity' ? 'active' : ''}`}
+              onClick={() => setSelectedCategory('activity')}
+              style={{ '--category-color': getItemTypeColor('activity') }}
+            >
+              {getItemIcon('activity')} Activities ({tripActivities.length})
+            </button>
             {Object.entries(LOCATION_CATEGORIES).map(([key, value]) => (
               <button
                 key={key}
@@ -123,48 +190,55 @@ export default function Locations() {
               filteredLocations.map((location) => (
                 <div
                   key={location.id}
-                  className="location-card"
+                  className={`location-card ${location.isTrip ? 'is-trip-item' : ''}`}
                   onClick={() => handleLocationClick(location)}
-                  style={{ '--category-color': getCategoryColor(location.category) }}
+                  style={{ '--category-color': location.isTrip ? getItemTypeColor(location.itemType) : getCategoryColor(location.category) }}
                 >
                   <div className="location-icon">
-                    {getCategoryIcon(location.category)}
+                    {location.isTrip ? getItemIcon(location.itemType, location.travelType) : getCategoryIcon(location.category)}
                   </div>
                   <div className="location-info">
                     <h4>{location.name}</h4>
                     {location.address && (
                       <span className="location-address">{location.address}</span>
                     )}
+                    {location.isTrip && (
+                      <span className="trip-badge" style={{ backgroundColor: getItemTypeColor(location.itemType) }}>
+                        {location.tripName}
+                      </span>
+                    )}
                     {location.notes && (
                       <p className="location-notes">{location.notes}</p>
                     )}
                   </div>
-                  <div className="location-actions">
-                    <button
-                      className="action-btn edit"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(location);
-                      }}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                    </button>
-                    <button
-                      className="action-btn delete"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(location.id);
-                      }}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3,6 5,6 21,6" />
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                    </button>
-                  </div>
+                  {!location.isTrip && (
+                    <div className="location-actions">
+                      <button
+                        className="action-btn edit"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(location);
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                      <button
+                        className="action-btn delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(location.id);
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3,6 5,6 21,6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -186,12 +260,17 @@ export default function Locations() {
               <Marker
                 key={location.id}
                 position={[location.coordinates.lat, location.coordinates.lng]}
-                icon={createCustomIcon(location.category)}
+                icon={createCustomIcon(location)}
               >
                 <Popup>
                   <div className="map-popup">
                     <h4>{location.name}</h4>
                     {location.address && <p>{location.address}</p>}
+                    {location.isTrip && (
+                      <p className="popup-trip" style={{ color: getItemTypeColor(location.itemType) }}>
+                        {getItemIcon(location.itemType, location.travelType)} {location.tripName}
+                      </p>
+                    )}
                     {location.notes && <p className="popup-notes">{location.notes}</p>}
                   </div>
                 </Popup>
