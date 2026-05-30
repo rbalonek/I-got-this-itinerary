@@ -22,6 +22,7 @@ export async function handler(event) {
 
     // Fetch the webpage content
     let pageContent;
+    let finalUrl = url;
     try {
       const response = await fetch(url, {
         headers: {
@@ -33,6 +34,7 @@ export async function handler(event) {
         throw new Error(`Failed to fetch URL: ${response.status}`);
       }
 
+      finalUrl = response.url || url;
       pageContent = await response.text();
     } catch (fetchError) {
       return {
@@ -40,6 +42,20 @@ export async function handler(event) {
         body: JSON.stringify({
           success: false,
           error: 'Could not access the URL. It may be blocked or require authentication.',
+        }),
+      };
+    }
+
+    // Private booking links (Airbnb reservations, etc.) redirect a server-side
+    // fetch to a login page. Detect that and tell the user instead of handing
+    // the login HTML to the AI and silently returning empty fields.
+    if (/\/(login|signin|sign-in|authenticate)\b/i.test(finalUrl)) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          success: false,
+          error:
+            'That link redirected to a login page, so the booking details are not publicly visible. Upload a screenshot of the booking and click "Extract Info" instead.',
         }),
       };
     }
@@ -63,6 +79,25 @@ export async function handler(event) {
         body: JSON.stringify({
           success: false,
           error: 'No AI API key configured. Please set ANTHROPIC_API_KEY or OPENAI_API_KEY in environment variables.',
+        }),
+      };
+    }
+
+    // If the page loaded but held no booking data (dynamic content, paywall,
+    // login wall that returned 200, etc.), surface that instead of returning
+    // a "success" with every field empty.
+    const hasData =
+      extractedData &&
+      Object.values(extractedData).some(
+        (v) => v !== null && v !== undefined && v !== ''
+      );
+    if (!hasData) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          success: false,
+          error:
+            'Could not find booking details at that link — it may require login or load its content dynamically. Try uploading a screenshot instead.',
         }),
       };
     }
