@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useTrips } from '../../context/TripContext';
-import { formatDate, formatDateTime, getItemIcon, getItemTypeColor, getFaviconUrl } from '../../utils/helpers';
+import { formatDateTime, getItemIcon, getItemTypeColor } from '../../utils/helpers';
 import 'leaflet/dist/leaflet.css';
 import './MapView.css';
 
