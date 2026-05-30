@@ -90,3 +90,24 @@
 .popup-directions-btn:hover {
   background: #3367d6;
 }
+
+/* Smaller, lighter directions button for sidebar list cards. */
+.card-directions-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: flex-start;
+  margin-top: 0.4rem;
+  padding: 0.25rem 0.55rem;
+  background: rgba(66, 133, 244, 0.1);
+  color: #4285f4 !important;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.card-directions-btn:hover {
+  background: rgba(66, 133, 244, 0.2);
+}

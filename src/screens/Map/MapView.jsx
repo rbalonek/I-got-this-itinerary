@@ -171,6 +171,15 @@ export default function MapView() {
                     {item.location && (
                       <span className="event-location">{item.location}</span>
                     )}
+                    <a
+                      href={getDirectionsUrl(item.coordinates)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="card-directions-btn"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      🚶 Directions
+                    </a>
                   </div>
                 </div>
               ))}

@@ -213,6 +213,17 @@ export default function Locations() {
                     {location.notes && (
                       <p className="location-notes">{location.notes}</p>
                     )}
+                    {location.coordinates && location.coordinates.lat && location.coordinates.lng && (
+                      <a
+                        href={getDirectionsUrl(location.coordinates)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="card-directions-btn"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        🚶 Directions
+                      </a>
+                    )}
                   </div>
                   {!location.isTrip && (
                     <div className="location-actions">
