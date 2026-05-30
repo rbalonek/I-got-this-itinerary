@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './MainLayout.css';
 
 const navItems = [
@@ -46,6 +47,7 @@ const NavIcon = ({ icon }) => {
 
 export default function MainLayout({ children }) {
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   return (
     <div className="app-container">
@@ -55,6 +57,14 @@ export default function MainLayout({ children }) {
             <span className="logo-icon">✈️</span>
             <h1>I Got This</h1>
           </div>
+          {user && (
+            <div className="header-account">
+              <span className="header-email">{user.email}</span>
+              <button type="button" className="sign-out-btn" onClick={signOut}>
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
