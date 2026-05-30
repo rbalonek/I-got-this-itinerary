@@ -52,11 +52,13 @@ const createCustomIcon = (location) => {
 // Component to handle map view updates
 function MapUpdater({ center }) {
   const map = useMap();
+  const lat = center?.[0];
+  const lng = center?.[1];
   useEffect(() => {
-    if (center && center[0] && center[1]) {
-      map.flyTo(center, 15, { duration: 0.5 });
+    if (lat && lng) {
+      map.flyTo([lat, lng], 15, { duration: 0.5 });
     }
-  }, [center[0], center[1], map]);
+  }, [lat, lng, map]);
   return null;
 }
 

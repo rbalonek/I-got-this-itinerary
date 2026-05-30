@@ -9,7 +9,6 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
   const [isParsingImage, setIsParsingImage] = useState(false);
   const [scrapeError, setScrapeError] = useState(null);
   const [parseSuccess, setParseSuccess] = useState(null);
-  const [showImageUpload, setShowImageUpload] = useState(true); // Always show image upload option
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeStatus, setGeocodeStatus] = useState(null); // 'success', 'not_found', or null
 
@@ -283,12 +282,10 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
         }
       } else {
         setScrapeError(data.error || 'Could not extract information from URL');
-        setShowImageUpload(true);
       }
     } catch (error) {
       console.error('Error scraping URL:', error);
       setScrapeError('Failed to scrape URL. Try uploading a screenshot instead.');
-      setShowImageUpload(true);
     } finally {
       setIsLoading(false);
     }
