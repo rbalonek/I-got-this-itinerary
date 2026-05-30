@@ -223,7 +223,7 @@ export default function MapView() {
                   click: () => handleItemClick(item),
                 }}
               >
-                <Popup>
+                <Popup maxHeight={220}>
                   <div className="item-popup">
                     <div className="popup-header">
                       <span className="popup-number">{index + 1}</span>

@@ -278,7 +278,7 @@ export default function Locations() {
                 position={[location.coordinates.lat, location.coordinates.lng]}
                 icon={createCustomIcon(location)}
               >
-                <Popup>
+                <Popup maxHeight={220}>
                   <div className="map-popup">
                     <h4>{location.name}</h4>
                     {location.address && <p>{location.address}</p>}

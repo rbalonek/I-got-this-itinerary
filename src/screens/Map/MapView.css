@@ -324,17 +324,26 @@
 
 /* Responsive */
 @media (max-width: 900px) {
+  /* Let the page scroll naturally instead of locking to 100vh (which mobile
+     browsers miscompute), so the map doesn't overlap the content above it. */
+  .map-view-container {
+    height: auto;
+  }
+
   .map-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .map-sidebar {
-    max-height: 250px;
+    max-height: none;
   }
 
   .map-content {
-    min-height: 400px;
+    height: 60vh;
+    min-height: 320px;
+    flex-shrink: 0;
   }
 
   .events-list {

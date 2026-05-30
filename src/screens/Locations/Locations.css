@@ -254,6 +254,7 @@
   margin: 0;
   font-size: 0.8rem;
   color: #64748b;
+  overflow-wrap: break-word;
 }
 
 .map-popup .popup-notes {
@@ -264,17 +265,33 @@
 
 /* Responsive */
 @media (max-width: 900px) {
+  /* Let the page scroll naturally instead of locking to the viewport height.
+     Mobile browsers miscompute 100vh (dynamic URL bar), which made the map's
+     min-height overflow upward and cover the category pills. */
+  .locations-container {
+    height: auto;
+  }
+
   .locations-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .locations-sidebar {
-    max-height: 300px;
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* Show all cards and let the whole page scroll, not a nested scroll area. */
+  .locations-list {
+    overflow: visible;
   }
 
   .locations-map {
-    min-height: 300px;
+    height: 60vh;
+    min-height: 320px;
+    flex-shrink: 0;
   }
 }
 
