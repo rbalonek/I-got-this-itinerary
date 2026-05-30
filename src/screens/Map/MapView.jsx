@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useTrips } from '../../context/TripContext';
-import { formatDateTime, getItemIcon, getItemTypeColor } from '../../utils/helpers';
+import { formatDateTime, getItemIcon, getItemTypeColor, getDirectionsUrl } from '../../utils/helpers';
 import CurrentLocation from '../../components/CurrentLocation';
 import 'leaflet/dist/leaflet.css';
 import './MapView.css';
@@ -239,6 +239,14 @@ export default function MapView() {
                         View Details
                       </a>
                     )}
+                    <a
+                      href={getDirectionsUrl(item.coordinates)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="popup-directions-btn"
+                    >
+                      🚶 Walking directions
+                    </a>
                     <p className="popup-trip">{item.tripName}</p>
                   </div>
                 </Popup>

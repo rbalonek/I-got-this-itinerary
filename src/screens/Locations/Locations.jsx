@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useTrips, LOCATION_CATEGORIES, ITEM_TYPES } from '../../context/TripContext';
-import { getCategoryIcon, getCategoryColor, getItemIcon, getItemTypeColor } from '../../utils/helpers';
+import { getCategoryIcon, getCategoryColor, getItemIcon, getItemTypeColor, getDirectionsUrl } from '../../utils/helpers';
 import LocationModal from './LocationModal';
 import CurrentLocation from '../../components/CurrentLocation';
 import 'leaflet/dist/leaflet.css';
@@ -277,6 +277,14 @@ export default function Locations() {
                       </p>
                     )}
                     {location.notes && <p className="popup-notes">{location.notes}</p>}
+                    <a
+                      href={getDirectionsUrl(location.coordinates)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="popup-directions-btn"
+                    >
+                      🚶 Walking directions
+                    </a>
                   </div>
                 </Popup>
               </Marker>

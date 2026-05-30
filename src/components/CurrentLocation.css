@@ -70,3 +70,23 @@
     transform: rotate(360deg);
   }
 }
+
+/* "Walking directions" button shown in map popups. */
+.popup-directions-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  background: #4285f4;
+  color: #fff !important;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.popup-directions-btn:hover {
+  background: #3367d6;
+}

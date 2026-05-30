@@ -143,6 +143,19 @@ export const generateId = () => {
   return Math.random().toString(36).substring(2, 9);
 };
 
+// Build a Google Maps directions URL to the given coordinates. Origin is left
+// blank so Maps uses the device's current location (works on web + mobile and
+// deep-links into the Maps app). Defaults to walking directions.
+export const getDirectionsUrl = (coordinates, mode = 'walking') => {
+  if (!coordinates || coordinates.lat == null || coordinates.lng == null) {
+    return null;
+  }
+  const destination = `${coordinates.lat},${coordinates.lng}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+    destination
+  )}&travelmode=${mode}`;
+};
+
 // Geocode a location string to coordinates using OpenStreetMap Nominatim
 export const geocodeLocation = async (locationString) => {
   if (!locationString || locationString.trim().length < 3) {
