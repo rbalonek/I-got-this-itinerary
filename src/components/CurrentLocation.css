@@ -1,0 +1,72 @@
+/* The user's position: a blue dot with a soft pulsing ring. */
+.current-location-marker {
+  background: transparent;
+  border: none;
+}
+
+.current-location-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #4285f4;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.5);
+  animation: current-location-pulse 2s infinite;
+}
+
+@keyframes current-location-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 16px rgba(66, 133, 244, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0);
+  }
+}
+
+/* "Locate me" map control button. */
+.locate-me-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  color: #4285f4;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.locate-me-btn:hover {
+  background: #f4f4f4;
+}
+
+.locate-me-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.locate-me-btn.locating {
+  color: #94a3b8;
+  cursor: progress;
+}
+
+.locate-me-btn.locating svg {
+  animation: locate-spin 1s linear infinite;
+}
+
+.locate-me-btn.error {
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+@keyframes locate-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

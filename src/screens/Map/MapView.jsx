@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import L from 'leaflet';
 import { useTrips } from '../../context/TripContext';
 import { formatDateTime, getItemIcon, getItemTypeColor } from '../../utils/helpers';
+import CurrentLocation from '../../components/CurrentLocation';
 import 'leaflet/dist/leaflet.css';
 import './MapView.css';
 
@@ -190,6 +191,7 @@ export default function MapView() {
 
             {positions.length > 0 && <MapBounds positions={positions} />}
             <MapPanTo selectedItem={selectedItem} />
+            <CurrentLocation />
 
             {/* Overall trip route line */}
             {routePositions.length > 1 && (

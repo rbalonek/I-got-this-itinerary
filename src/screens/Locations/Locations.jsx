@@ -4,6 +4,7 @@ import L from 'leaflet';
 import { useTrips, LOCATION_CATEGORIES, ITEM_TYPES } from '../../context/TripContext';
 import { getCategoryIcon, getCategoryColor, getItemIcon, getItemTypeColor } from '../../utils/helpers';
 import LocationModal from './LocationModal';
+import CurrentLocation from '../../components/CurrentLocation';
 import 'leaflet/dist/leaflet.css';
 import './Locations.css';
 
@@ -258,6 +259,7 @@ export default function Locations() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <MapUpdater center={mapCenter} />
+            <CurrentLocation />
             {/* Location markers */}
             {mappableLocations.map((location) => (
               <Marker
