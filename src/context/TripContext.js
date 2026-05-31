@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
+import { uploadDataUrlImage, isDataUrl } from '../lib/storage';
 import { useAuth } from './AuthContext';
 
 const TripContext = createContext();
@@ -220,6 +221,33 @@ export function TripProvider({ children }) {
       const locations = locationsRes.data.map(rowToLocation);
 
       dispatch({ type: 'LOAD_DATA', payload: { trips, locations } });
+
+      // One-time, best-effort migration: legacy items stored their screenshot
+      // inline as base64, which bloats every load. Move each into Storage and
+      // replace it with a URL so future loads are small. Sequential + guarded
+      // so a failure just leaves that image inline (still works, just heavier).
+      for (const trip of trips) {
+        for (const it of trip.items) {
+          if (cancelled) return;
+          if (!isDataUrl(it.image)) continue;
+          try {
+            const url = await uploadDataUrlImage(it.image, user.id);
+            const migrated = { ...it, image: url };
+            const { error } = await supabase
+              .from('itinerary_items')
+              .update({ data: withoutId(migrated) })
+              .eq('id', it.id);
+            if (error) throw error;
+            if (cancelled) return;
+            dispatch({
+              type: 'UPDATE_ITINERARY_ITEM',
+              payload: { tripId: trip.id, item: migrated },
+            });
+          } catch (e) {
+            console.error('Image migration failed for item', it.id, e.message);
+          }
+        }
+      }
     })();
 
     return () => {

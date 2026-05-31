@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useTrips, ITEM_TYPES, TRAVEL_TYPES, LOCATION_CATEGORIES } from '../context/TripContext';
+import { useAuth } from '../context/AuthContext';
 import { fileToBase64, getFaviconUrl, isValidUrl, geocodeLocation, getCategoryIcon } from '../utils/helpers';
+import { uploadDataUrlImage, isDataUrl } from '../lib/storage';
 import './ItemModal.css';
 
 export default function ItemModal({ tripId, item, itemType, onClose }) {
   const { addItineraryItem, updateItineraryItem } = useTrips();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isParsingImage, setIsParsingImage] = useState(false);
   const [scrapeError, setScrapeError] = useState(null);
   const [parseSuccess, setParseSuccess] = useState(null);
@@ -293,9 +297,23 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) return;
+
+    // Move a freshly-added screenshot to Storage and persist its URL instead of
+    // the heavy base64 string. Falls back to inline storage if upload fails.
+    let imageValue = formData.image;
+    if (isDataUrl(imageValue) && user) {
+      setIsSaving(true);
+      try {
+        imageValue = await uploadDataUrlImage(imageValue, user.id);
+      } catch (err) {
+        console.error('Image upload failed, keeping inline image:', err);
+      } finally {
+        setIsSaving(false);
+      }
+    }
 
     const startDateTime = formData.startDate && formData.startTime
       ? new Date(`${formData.startDate}T${formData.startTime}`)
@@ -322,7 +340,7 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
       price: formData.price,
       url: formData.url,
       notes: formData.notes,
-      image: formData.image,
+      image: imageValue,
       faviconUrl: formData.faviconUrl,
       coordinates: formData.coordinates,
       // Travel route fields
@@ -759,8 +777,8 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
             <button type="button" className="btn-secondary" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary" disabled={isLoading}>
-              {item ? 'Save Changes' : `Add ${getTypeLabel()}`}
+            <button type="submit" className="btn-primary" disabled={isLoading || isSaving}>
+              {isSaving ? 'Saving…' : item ? 'Save Changes' : `Add ${getTypeLabel()}`}
             </button>
           </div>
         </form>
