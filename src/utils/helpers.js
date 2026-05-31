@@ -61,6 +61,10 @@ export const getItemIcon = (type, subtype) => {
   if (type === 'travel' && subtype) {
     return icons.travel[subtype] || icons.travel.other;
   }
+  // Activities can carry a category (restaurant, museum, etc.) — show its icon.
+  if (type === 'activity' && subtype) {
+    return getCategoryIcon(subtype);
+  }
   return icons[type] || '📍';
 };
 

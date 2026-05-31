@@ -122,7 +122,7 @@ export default function Itinerary() {
                       ) : item.faviconUrl ? (
                         <img src={item.faviconUrl} alt="" />
                       ) : (
-                        getItemIcon(item.type, item.travelType)
+                        getItemIcon(item.type, item.travelType || item.category)
                       )}
                     </div>
                     <div className="item-details">

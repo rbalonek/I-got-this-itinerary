@@ -145,7 +145,7 @@ export default function TripDetail() {
                           ) : item.faviconUrl ? (
                             <img src={item.faviconUrl} alt="" />
                           ) : (
-                            getItemIcon(item.type, item.travelType)
+                            getItemIcon(item.type, item.travelType || item.category)
                           )}
                         </span>
                         <div className="item-title-section">

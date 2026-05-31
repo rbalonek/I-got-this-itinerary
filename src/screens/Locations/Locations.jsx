@@ -21,7 +21,7 @@ const createCustomIcon = (location) => {
   // For trip items, use item type colors and icons
   if (location.isTrip) {
     const color = getItemTypeColor(location.itemType);
-    const icon = getItemIcon(location.itemType, location.travelType);
+    const icon = getItemIcon(location.itemType, location.travelType || location.category);
     return L.divIcon({
       className: 'custom-marker',
       html: `
@@ -198,7 +198,7 @@ export default function Locations() {
                   style={{ '--category-color': location.isTrip ? getItemTypeColor(location.itemType) : getCategoryColor(location.category) }}
                 >
                   <div className="location-icon">
-                    {location.isTrip ? getItemIcon(location.itemType, location.travelType) : getCategoryIcon(location.category)}
+                    {location.isTrip ? getItemIcon(location.itemType, location.travelType || location.category) : getCategoryIcon(location.category)}
                   </div>
                   <div className="location-info">
                     <h4>{location.name}</h4>
@@ -284,7 +284,7 @@ export default function Locations() {
                     {location.address && <p>{location.address}</p>}
                     {location.isTrip && (
                       <p className="popup-trip" style={{ color: getItemTypeColor(location.itemType) }}>
-                        {getItemIcon(location.itemType, location.travelType)} {location.tripName}
+                        {getItemIcon(location.itemType, location.travelType || location.category)} {location.tripName}
                       </p>
                     )}
                     {location.notes && <p className="popup-notes">{location.notes}</p>}

@@ -24,7 +24,7 @@ const createItemIcon = (item) => {
   if (iconContent) {
     innerContent = `<img src="${iconContent}" alt="" class="marker-image" />`;
   } else {
-    innerContent = `<span class="marker-emoji">${getItemIcon(item.type, item.travelType)}</span>`;
+    innerContent = `<span class="marker-emoji">${getItemIcon(item.type, item.travelType || item.category)}</span>`;
   }
 
   return L.divIcon({
@@ -160,7 +160,7 @@ export default function MapView() {
                     ) : item.faviconUrl ? (
                       <img src={item.faviconUrl} alt="" />
                     ) : (
-                      getItemIcon(item.type, item.travelType)
+                      getItemIcon(item.type, item.travelType || item.category)
                     )}
                   </div>
                   <div className="event-info">

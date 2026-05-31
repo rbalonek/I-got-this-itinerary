@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useTrips, ITEM_TYPES, TRAVEL_TYPES } from '../context/TripContext';
-import { fileToBase64, getFaviconUrl, isValidUrl, geocodeLocation } from '../utils/helpers';
+import { useTrips, ITEM_TYPES, TRAVEL_TYPES, LOCATION_CATEGORIES } from '../context/TripContext';
+import { fileToBase64, getFaviconUrl, isValidUrl, geocodeLocation, getCategoryIcon } from '../utils/helpers';
 import './ItemModal.css';
 
 export default function ItemModal({ tripId, item, itemType, onClose }) {
@@ -15,6 +15,7 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
   const [formData, setFormData] = useState({
     type: itemType || ITEM_TYPES.STAY,
     travelType: TRAVEL_TYPES.TRAIN,
+    category: LOCATION_CATEGORIES.RESTAURANT,
     title: '',
     location: '',
     startDate: '',
@@ -46,6 +47,7 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
       setFormData({
         type: item.type || itemType || ITEM_TYPES.STAY,
         travelType: item.travelType || TRAVEL_TYPES.TRAIN,
+        category: item.category || LOCATION_CATEGORIES.RESTAURANT,
         title: item.title || '',
         location: item.location || '',
         startDate: startDateTime ? startDateTime.toISOString().split('T')[0] : '',
@@ -310,6 +312,7 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
     const itemData = {
       type: formData.type,
       travelType: formData.type === ITEM_TYPES.TRAVEL ? formData.travelType : null,
+      category: formData.type === ITEM_TYPES.ACTIVITY ? formData.category : null,
       title: formData.title,
       location: formData.type === ITEM_TYPES.TRAVEL
         ? `${formData.originLocation} → ${formData.destinationLocation}`
@@ -513,6 +516,28 @@ export default function ItemModal({ tripId, item, itemType, onClose }) {
                     <span>{key.charAt(0) + key.slice(1).toLowerCase()}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Category Selector for Activities */}
+          {formData.type === ITEM_TYPES.ACTIVITY && (
+            <div className="form-group">
+              <label>Category</label>
+              <div className="travel-type-grid">
+                {Object.entries(LOCATION_CATEGORIES)
+                  .filter(([, value]) => value !== LOCATION_CATEGORIES.LODGING)
+                  .map(([key, value]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`travel-type-btn ${formData.category === value ? 'active' : ''}`}
+                      onClick={() => setFormData((prev) => ({ ...prev, category: value }))}
+                    >
+                      {getCategoryIcon(value)}
+                      <span>{key.charAt(0) + key.slice(1).toLowerCase()}</span>
+                    </button>
+                  ))}
               </div>
             </div>
           )}
