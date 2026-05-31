@@ -1,7 +1,15 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
 import { uploadDataUrlImage, isDataUrl } from '../lib/storage';
+import {
+  loadCache,
+  saveCache,
+  enqueueOp,
+  flushQueue,
+  pendingCount,
+  isOnline,
+} from '../lib/offline';
 import { useAuth } from './AuthContext';
 
 const TripContext = createContext();
@@ -43,8 +51,6 @@ const initialState = {
 };
 
 // ---- Row <-> app-object mappers -------------------------------------------
-// Trips use typed columns; items and locations keep their rich nested shapes
-// in a jsonb `data` column so the rest of the app reads identical field names.
 
 const tripToRow = (trip) => ({
   id: trip.id,
@@ -69,8 +75,6 @@ const rowToTrip = (row, items = []) => ({
 const rowToItem = (row) => ({ id: row.id, ...row.data });
 const rowToLocation = (row) => ({ id: row.id, ...row.data });
 
-// Strip the id out of an object before storing it in a jsonb `data` column
-// (the id lives in its own column).
 const withoutId = ({ id, ...rest }) => rest;
 
 function tripReducer(state, action) {
@@ -114,9 +118,7 @@ function tripReducer(state, action) {
       return {
         ...state,
         trips: state.trips.map((trip) =>
-          trip.id === tripId
-            ? { ...trip, items: [...trip.items, item] }
-            : trip
+          trip.id === tripId ? { ...trip, items: [...trip.items, item] } : trip
         ),
       };
     }
@@ -129,9 +131,7 @@ function tripReducer(state, action) {
           trip.id === tripId
             ? {
                 ...trip,
-                items: trip.items.map((i) =>
-                  i.id === item.id ? { ...i, ...item } : i
-                ),
+                items: trip.items.map((i) => (i.id === item.id ? { ...i, ...item } : i)),
               }
             : trip
         ),
@@ -151,10 +151,7 @@ function tripReducer(state, action) {
     }
 
     case 'ADD_LOCATION':
-      return {
-        ...state,
-        locations: [...state.locations, action.payload],
-      };
+      return { ...state, locations: [...state.locations, action.payload] };
 
     case 'UPDATE_LOCATION':
       return {
@@ -175,16 +172,22 @@ function tripReducer(state, action) {
   }
 }
 
-// Surfaces Supabase write failures without blocking the optimistic UI.
-const reportError = (label) => ({ error }) => {
-  if (error) console.error(`Supabase ${label} failed:`, error.message);
-};
-
 export function TripProvider({ children }) {
   const [state, dispatch] = useReducer(tripReducer, initialState);
   const { user } = useAuth();
+  const [online, setOnline] = useState(isOnline());
+  const [pendingSync, setPendingSync] = useState(0);
 
-  // Load this user's data whenever they sign in; clear it when they sign out.
+  // Every mutation goes through the queue: the optimistic dispatch already
+  // updated the UI; this records the write durably and flushes it when online.
+  const queueWrite = (op) => {
+    if (!user) return;
+    enqueueOp(user.id, op);
+    setPendingSync(pendingCount(user.id));
+    flushQueue(supabase, user.id, setPendingSync);
+  };
+
+  // Load this user's data on sign-in; clear it on sign-out.
   useEffect(() => {
     let cancelled = false;
 
@@ -193,6 +196,17 @@ export function TripProvider({ children }) {
       return;
     }
 
+    // 1) Instant hydrate from the local cache — works with no signal.
+    const cached = loadCache(user.id);
+    if (cached) {
+      dispatch({ type: 'LOAD_DATA', payload: cached });
+    }
+    setPendingSync(pendingCount(user.id));
+
+    // 2) Replay any writes queued during a previous offline session.
+    flushQueue(supabase, user.id, setPendingSync);
+
+    // 3) Refresh from the server when reachable.
     (async () => {
       const [tripsRes, itemsRes, locationsRes] = await Promise.all([
         supabase.from('trips').select('*').order('created_at', { ascending: true }),
@@ -203,15 +217,12 @@ export function TripProvider({ children }) {
       if (cancelled) return;
 
       if (tripsRes.error || itemsRes.error || locationsRes.error) {
-        console.error(
-          'Failed to load data:',
-          tripsRes.error?.message || itemsRes.error?.message || locationsRes.error?.message
-        );
-        dispatch({ type: 'LOAD_DATA', payload: { trips: [], locations: [] } });
+        // Offline or transient error — keep showing the cache. Only fall back
+        // to empty if we had nothing cached to show.
+        if (!cached) dispatch({ type: 'LOAD_DATA', payload: { trips: [], locations: [] } });
         return;
       }
 
-      // Group items under their trip.
       const itemsByTrip = {};
       for (const row of itemsRes.data) {
         (itemsByTrip[row.trip_id] ||= []).push(rowToItem(row));
@@ -221,11 +232,9 @@ export function TripProvider({ children }) {
       const locations = locationsRes.data.map(rowToLocation);
 
       dispatch({ type: 'LOAD_DATA', payload: { trips, locations } });
+      saveCache(user.id, { trips, locations });
 
-      // One-time, best-effort migration: legacy items stored their screenshot
-      // inline as base64, which bloats every load. Move each into Storage and
-      // replace it with a URL so future loads are small. Sequential + guarded
-      // so a failure just leaves that image inline (still works, just heavier).
+      // One-time, best-effort migration of any legacy inline base64 images.
       for (const trip of trips) {
         for (const it of trip.items) {
           if (cancelled) return;
@@ -255,6 +264,28 @@ export function TripProvider({ children }) {
     };
   }, [user]);
 
+  // Persist a fresh snapshot to the cache whenever the data changes.
+  useEffect(() => {
+    if (user && !state.loading) {
+      saveCache(user.id, { trips: state.trips, locations: state.locations });
+    }
+  }, [state.trips, state.locations, state.loading, user]);
+
+  // Track connectivity; flush the queue the moment we come back online.
+  useEffect(() => {
+    const goOnline = () => {
+      setOnline(true);
+      if (user) flushQueue(supabase, user.id, setPendingSync);
+    };
+    const goOffline = () => setOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, [user]);
+
   // Trip actions
   const createTrip = (name, description = '', startDate = null, endDate = null, coverImage = null) => {
     const trip = {
@@ -268,36 +299,34 @@ export function TripProvider({ children }) {
       createdAt: new Date().toISOString(),
     };
     dispatch({ type: 'CREATE_TRIP', payload: trip });
-    supabase.from('trips').insert(tripToRow(trip)).then(reportError('insert trip'));
+    queueWrite({ op: 'insert', table: 'trips', values: tripToRow(trip) });
     return trip;
   };
 
   const updateTrip = (tripData) => {
+    const merged = { ...state.trips.find((t) => t.id === tripData.id), ...tripData };
     dispatch({ type: 'UPDATE_TRIP', payload: tripData });
-    supabase
-      .from('trips')
-      .update(tripToRow({ ...state.trips.find((t) => t.id === tripData.id), ...tripData }))
-      .eq('id', tripData.id)
-      .then(reportError('update trip'));
+    queueWrite({
+      op: 'update',
+      table: 'trips',
+      values: tripToRow(merged),
+      match: { column: 'id', value: tripData.id },
+    });
   };
 
   const deleteTrip = (tripId) => {
     dispatch({ type: 'DELETE_TRIP', payload: tripId });
     // itinerary_items are removed automatically via ON DELETE CASCADE.
-    supabase.from('trips').delete().eq('id', tripId).then(reportError('delete trip'));
+    queueWrite({ op: 'delete', table: 'trips', match: { column: 'id', value: tripId } });
   };
 
   const setActiveTrip = (tripId) => {
     dispatch({ type: 'SET_ACTIVE_TRIP', payload: tripId });
   };
 
-  const getTrip = (tripId) => {
-    return state.trips.find((trip) => trip.id === tripId);
-  };
+  const getTrip = (tripId) => state.trips.find((trip) => trip.id === tripId);
 
-  const getActiveTrip = () => {
-    return state.trips.find((trip) => trip.id === state.activeTrip);
-  };
+  const getActiveTrip = () => state.trips.find((trip) => trip.id === state.activeTrip);
 
   // Itinerary item actions
   const addItineraryItem = (tripId, itemData) => {
@@ -307,25 +336,31 @@ export function TripProvider({ children }) {
       createdAt: new Date().toISOString(),
     };
     dispatch({ type: 'ADD_ITINERARY_ITEM', payload: { tripId, item } });
-    supabase
-      .from('itinerary_items')
-      .insert({ id: item.id, trip_id: tripId, data: withoutId(item) })
-      .then(reportError('insert item'));
+    queueWrite({
+      op: 'insert',
+      table: 'itinerary_items',
+      values: { id: item.id, trip_id: tripId, data: withoutId(item) },
+    });
     return item;
   };
 
   const updateItineraryItem = (tripId, item) => {
     dispatch({ type: 'UPDATE_ITINERARY_ITEM', payload: { tripId, item } });
-    supabase
-      .from('itinerary_items')
-      .update({ data: withoutId(item) })
-      .eq('id', item.id)
-      .then(reportError('update item'));
+    queueWrite({
+      op: 'update',
+      table: 'itinerary_items',
+      values: { data: withoutId(item) },
+      match: { column: 'id', value: item.id },
+    });
   };
 
   const deleteItineraryItem = (tripId, itemId) => {
     dispatch({ type: 'DELETE_ITINERARY_ITEM', payload: { tripId, itemId } });
-    supabase.from('itinerary_items').delete().eq('id', itemId).then(reportError('delete item'));
+    queueWrite({
+      op: 'delete',
+      table: 'itinerary_items',
+      match: { column: 'id', value: itemId },
+    });
   };
 
   // Location/wishlist actions
@@ -336,25 +371,31 @@ export function TripProvider({ children }) {
       createdAt: new Date().toISOString(),
     };
     dispatch({ type: 'ADD_LOCATION', payload: location });
-    supabase
-      .from('locations')
-      .insert({ id: location.id, data: withoutId(location) })
-      .then(reportError('insert location'));
+    queueWrite({
+      op: 'insert',
+      table: 'locations',
+      values: { id: location.id, data: withoutId(location) },
+    });
     return location;
   };
 
   const updateLocation = (location) => {
     dispatch({ type: 'UPDATE_LOCATION', payload: location });
-    supabase
-      .from('locations')
-      .update({ data: withoutId(location) })
-      .eq('id', location.id)
-      .then(reportError('update location'));
+    queueWrite({
+      op: 'update',
+      table: 'locations',
+      values: { data: withoutId(location) },
+      match: { column: 'id', value: location.id },
+    });
   };
 
   const deleteLocation = (locationId) => {
     dispatch({ type: 'DELETE_LOCATION', payload: locationId });
-    supabase.from('locations').delete().eq('id', locationId).then(reportError('delete location'));
+    queueWrite({
+      op: 'delete',
+      table: 'locations',
+      match: { column: 'id', value: locationId },
+    });
   };
 
   const value = {
@@ -362,6 +403,8 @@ export function TripProvider({ children }) {
     locations: state.locations,
     activeTrip: state.activeTrip,
     loading: state.loading,
+    online,
+    pendingSync,
     createTrip,
     updateTrip,
     deleteTrip,

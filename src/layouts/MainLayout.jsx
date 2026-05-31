@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTrips } from '../context/TripContext';
 import './MainLayout.css';
 
 const navItems = [
@@ -48,6 +49,7 @@ const NavIcon = ({ icon }) => {
 export default function MainLayout({ children }) {
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { online, pendingSync } = useTrips();
 
   return (
     <div className="app-container">
@@ -59,6 +61,15 @@ export default function MainLayout({ children }) {
           </Link>
           {user && (
             <div className="header-account">
+              {!online ? (
+                <span className="sync-status offline" title="No connection — changes are saved on your device and will sync when you're back online">
+                  ● Offline
+                </span>
+              ) : pendingSync > 0 ? (
+                <span className="sync-status syncing" title="Syncing your changes to the cloud">
+                  ↻ Syncing {pendingSync}
+                </span>
+              ) : null}
               <span className="header-email">{user.email}</span>
               <button type="button" className="sign-out-btn" onClick={signOut}>
                 Sign out

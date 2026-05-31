@@ -44,6 +44,24 @@
   color: var(--text-muted);
 }
 
+.sync-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.sync-status.offline {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.sync-status.syncing {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
 .sign-out-btn {
   padding: 0.4rem 0.8rem;
   border: 1px solid var(--border-medium);
