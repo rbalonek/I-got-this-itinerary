@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './MainLayout.css';
 
@@ -53,10 +53,10 @@ export default function MainLayout({ children }) {
     <div className="app-container">
       <header className="app-header">
         <div className="header-content">
-          <div className="logo">
+          <Link to="/" className="logo" aria-label="I Got This Itinerary — go to Trips">
             <span className="logo-icon">✈️</span>
-            <h1>I Got This</h1>
-          </div>
+            <h1>I Got This Itinerary</h1>
+          </Link>
           {user && (
             <div className="header-account">
               <span className="header-email">{user.email}</span>
